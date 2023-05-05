@@ -14,5 +14,5 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect('https://app.swaggerhub.com/apis-docs/artur0727/challenge-clientes-arturo/1.0.0');
 });

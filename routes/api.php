@@ -28,8 +28,7 @@ Route::post('/crearcliente', [ClienteController::class, 'crearCliente']);
 
 /**
  *  
- * Muestra una lista de clientes con Promedio de Edad entre todos los clientes
- * Muestra la Desviación estándar entre las edades de todos los clientes
+ * Muestra una lista de todos los clientes + fecha probable de muerte
  * 
 */
 
@@ -39,7 +38,7 @@ Route::get('/listclientes', [ClienteController::class, 'listarClientes']);
 
 /**
  * 
- * Mostra una lista de clientes con Promedio de Edad entre todos los clientes
+ * Muestra el Promedio de Edad entre todos los clientes
  * Muestra la Desviación estándar entre las edades de todos los clientes
  * 
 */

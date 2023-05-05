@@ -18,16 +18,8 @@ class ClienteController extends Controller
     **/
     public function crearCliente(Request $request)
     {
-        
-        // Definir reglas de validación
-        $rules = [
-            'nombre' => 'required|regex:/^[A-Za-zñÑáéíóúÁÉÍÓÚ\s]+$/',
-            'apellido' => 'required|regex:/^[A-Za-zñÑáéíóúÁÉÍÓÚ\s]+$/',
-            'edad' => 'required|integer|min:0',
-            'fecha_nacimiento' => 'required|date_format:d-m-Y|before_or_equal:today',//date_format:Y-m-d
-        ];
 
-        // Definir mensajes de error personalizados
+        // Define mensajes de error personalizados
         $messages = [
             'nombre.required' => 'El campo nombre es requerido.',
             'nombre.regex' => 'El campo nombre solo debe contener letras y espacios.',
@@ -37,15 +29,20 @@ class ClienteController extends Controller
             'edad.integer' => 'El campo edad tiene que ser de tipo integer.',
             'edad.min' => 'La edad mínima es de 0.',
             'fecha_nacimiento.required' => 'El campo fecha_nacimiento es requerido.',
-            'fecha_nacimiento.date_format' => 'El campo fecha_nacimiento tiene que ser de tipo date (d-m-Y).',
+            'fecha_nacimiento.date_format' => 'El campo fecha_nacimiento tiene que ser de tipo date (Y-m-d).',
             'fecha_nacimiento.before_or_equal' => 'El campo fecha_nacimiento debe ser una fecha anterior o igual a la de hoy.'
         ];
-
-        // Validar los campos del cliente
-        $validator = Validator::make($request->all(), $rules, $messages);
+        
+        // Valida los campos del cliente
+        // Define reglas de validación
+        $validator = Validator::make($request->all(), [
+            'nombre' => ['required','regex:/^[\p{L}\s]+$/u'],
+            'apellido' => ['required','regex:/^[\p{L}\s]+$/u'],
+            'edad' => 'required|integer|min:0',
+            'fecha_nacimiento' => 'required|date_format:Y-m-d|before_or_equal:today',//date_format:Y-m-d
+        ], $messages);
         $validator->after(function ($validator) use ($request) {
-
-            // Convertir la primera letra de nombre y apellido a mayúscula
+           
             $request->merge([
                 'nombre' => ucfirst(strtolower($request->nombre)),
                 'apellido' => ucfirst(strtolower($request->apellido)),
@@ -54,19 +51,21 @@ class ClienteController extends Controller
             // Verifica si los campos edad y fecha de nacimiento están presentes
             if ($request->has('edad') && $request->has('fecha_nacimiento')) {
                 // Agrega reglas de validación personalizada para la edad y la fecha de nacimiento
-                $edad = $request->edad;
-                $fechaNacimiento = Carbon::createFromFormat('d-m-Y', $request->fecha_nacimiento);
-                $hoy = Carbon::now();
-
-                if ($edad !== $fechaNacimiento->age) {
+                $edad = $request->input('edad');
+                $fechaNacimiento = Carbon::createFromFormat('Y-m-d', $request->input('fecha_nacimiento'));
+                $fechaActual = Carbon::now();
+                if ($fechaNacimiento->diffInYears($fechaActual) !== $edad) {
                     $validator->errors()->add('edad', 'La edad no coincide con la fecha de nacimiento.');
                 }
             }
         });
 
+        // Retorna errores si existen
         if($validator->fails()){
 
-            return response()->json(['error' => $validator->errors()], 401);     
+            return response()->json([
+                'errors' => $validator->errors(),
+            ], 422);    
 
         }
 
@@ -96,9 +95,10 @@ class ClienteController extends Controller
     **/
     public function obtenerPromedioYDesviacion()
     {
-        //Obtiene todos los clientes
+        //Obtiene todos los clientes registrados
         $clientes = Cliente::all();
 
+        // Verifica si hay clientes registrados
         if ($clientes->isEmpty()) {
             return response()->json(['mensaje' => 'No hay clientes registrados'], 404);
         }
@@ -126,24 +126,29 @@ class ClienteController extends Controller
     public function listarClientes()
     {
 
+        // Obtiene todos los clientes registrados
         $clientes = Cliente::all();
 
+        // Verifica si hay clientes registrados
         if ($clientes->isEmpty()) {
             return response()->json(['mensaje' => 'No hay clientes registrados'], 404);
         }
 
+        //Se crea un arreglo vacio 
         $datos_clientes = [];
+
+        // Recorre todos los clientes
         foreach ($clientes as $cliente) {
 
-            $fech_nac = $cliente->fecha_nacimiento;
-
+            //Se instancia todos los clientes recorridos en el arreglo creado
             $datos_cliente = [
                 'nombre' => $cliente->nombre,
                 'apellido' => $cliente->apellido,
                 'edad' => $cliente->edad,
-                'fecha_nacimiento' => $fech_nac->format('d-m-Y'),
-                'fecha_probable_muerte' => $this->calcularFechaProbableMuerte($fech_nac->format('d-m-Y'))
+                'fecha_nacimiento' => $cliente->fecha_nacimiento,
+                'fecha_probable_muerte' => $this->calcularFechaProbableMuerte($cliente->fecha_nacimiento)
             ];
+
             array_push($datos_clientes, $datos_cliente);
         }
 
@@ -164,7 +169,7 @@ class ClienteController extends Controller
         // Para este ejemplo, se calcula la fecha probable de muerte (asumiendo una expectativa de vida promedio de 80 años)
         $fecha_probable_muerte = new DateTime($fecha_nacimiento);
         $fecha_probable_muerte->add(new DateInterval('P80Y'));
-        $fecha_probable_muerte = $fecha_probable_muerte->format('d-m-Y');
+        $fecha_probable_muerte = $fecha_probable_muerte->format('Y-m-d');
         return $fecha_probable_muerte; 
     }
 }
